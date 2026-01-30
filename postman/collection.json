@@ -1,0 +1,665 @@
+{
+  "info": {
+    "_postman_id": "995b3c36-687a-4c5d-8e45-1a99d145de5d",
+    "name": "dummyjson-products-carts-tests",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "46391633",
+    "_collection_link": "https://go.postman.co/collection/46391633-995b3c36-687a-4c5d-8e45-1a99d145de5d?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "Products",
+      "item": [
+        {
+          "name": "GET Products - list (pagination)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "(() => {\r",
+                  "  pm.test(\"Status 200\", () => pm.response.to.have.status(200));\r",
+                  "  pm.test(\"Response is JSON\", () => pm.response.to.be.json);\r",
+                  "\r",
+                  "  const data = pm.response.json();\r",
+                  "\r",
+                  "  pm.test(\"Has pagination shape\", () => {\r",
+                  "    pm.expect(data).to.have.property(\"products\");\r",
+                  "    pm.expect(data.products).to.be.an(\"array\");\r",
+                  "\r",
+                  "    pm.expect(data).to.have.property(\"total\");\r",
+                  "    pm.expect(data).to.have.property(\"skip\");\r",
+                  "    pm.expect(data).to.have.property(\"limit\");\r",
+                  "  });\r",
+                  "\r",
+                  "  pm.test(\"Products length <= limit\", () => {\r",
+                  "    pm.expect(data.products.length).to.be.at.most(Number(data.limit));\r",
+                  "  });\r",
+                  "\r",
+                  "  pm.test(\"Product IDs are unique within the page\", () => {\r",
+                  "    const ids = data.products.map(p => p.id);\r",
+                  "    const unique = new Set(ids);\r",
+                  "    pm.expect(unique.size).to.equal(ids.length);\r",
+                  "  });\r",
+                  "\r",
+                  "  pm.test(\"Each product has sane core fields (invariants)\", () => {\r",
+                  "    data.products.forEach(p => {\r",
+                  "      pm.expect(p.id).to.be.a(\"number\");\r",
+                  "      pm.expect(p.title).to.be.a(\"string\");\r",
+                  "      pm.expect(p.title.trim().length).to.be.greaterThan(0);\r",
+                  "      pm.expect(p.price).to.be.a(\"number\");\r",
+                  "      pm.expect(p.price).to.be.greaterThan(0);\r",
+                  "    });\r",
+                  "  });\r",
+                  "\r",
+                  "  // Set productId for next requests\r",
+                  "  if (data.products?.length) {\r",
+                  "    const pid = data.products[0].id;\r",
+                  "    try { pm.collectionVariables.set(\"productId\", pid); } catch (e) {}\r",
+                  "    try { pm.environment.set(\"productId\", pid); } catch (e) {}\r",
+                  "  }\r",
+                  "})();\r",
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products?limit={{limit}}&skip={{skip}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "{{limit}}",
+                  "description": "\n"
+                },
+                {
+                  "key": "skip",
+                  "value": "{{skip}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET Product - single",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const pid = pm.variables.get(\"productId\");\r",
+                  "\r",
+                  "// If productId is not set (e.g., you didn't run the list request first), use a safe fallback\r",
+                  "if (!pid) {\r",
+                  "  try { pm.collectionVariables.set(\"productId\", 1); } catch (e) {}\r",
+                  "  try { pm.environment.set(\"productId\", 1); } catch (e) {}\r",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status 200\", () => {\r",
+                  "  pm.response.to.have.status(200);\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Response is JSON\", () => {\r",
+                  "  pm.response.to.be.json;\r",
+                  "});\r",
+                  "\r",
+                  "const product = pm.response.json();\r",
+                  "const requestedId = Number(pm.variables.get(\"productId\"));\r",
+                  "\r",
+                  "pm.test(\"Returned product has matching id\", () => {\r",
+                  "  pm.expect(product).to.have.property(\"id\");\r",
+                  "  pm.expect(Number(product.id)).to.equal(requestedId);\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Core fields exist and are valid\", () => {\r",
+                  "  pm.expect(product).to.have.property(\"title\");\r",
+                  "  pm.expect(product.title).to.be.a(\"string\");\r",
+                  "  pm.expect(product.title.trim().length).to.be.greaterThan(0);\r",
+                  "\r",
+                  "  pm.expect(product).to.have.property(\"price\");\r",
+                  "  pm.expect(product.price).to.be.a(\"number\");\r",
+                  "  pm.expect(product.price).to.be.greaterThan(0);\r",
+                  "\r",
+                  "  // Optional fields: validate only if present\r",
+                  "  if (product.rating !== undefined) {\r",
+                  "    pm.expect(product.rating).to.be.a(\"number\");\r",
+                  "    pm.expect(product.rating).to.be.within(0, 5);\r",
+                  "  }\r",
+                  "\r",
+                  "  if (product.stock !== undefined) {\r",
+                  "    pm.expect(product.stock).to.be.a(\"number\");\r",
+                  "    pm.expect(product.stock).to.be.at.least(0);\r",
+                  "  }\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Images (if present) is a non-empty array\", () => {\r",
+                  "  if (product.images !== undefined) {\r",
+                  "    pm.expect(product.images).to.be.an(\"array\");\r",
+                  "    pm.expect(product.images.length).to.be.greaterThan(0);\r",
+                  "  }\r",
+                  "});\r",
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products/{{productId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products",
+                "{{productId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET Products - sorted by price (asc)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "(() => {\r",
+                  "  pm.test(\"Status 200\", () => pm.response.to.have.status(200));\r",
+                  "  pm.test(\"Response is JSON\", () => pm.response.to.be.json);\r",
+                  "\r",
+                  "  const data = pm.response.json();\r",
+                  "\r",
+                  "  pm.test(\"Has products array\", () => {\r",
+                  "    pm.expect(data).to.have.property(\"products\");\r",
+                  "    pm.expect(data.products).to.be.an(\"array\");\r",
+                  "  });\r",
+                  "\r",
+                  "  pm.test(\"Products are sorted by price ascending\", () => {\r",
+                  "    const prices = data.products.map(p => p.price);\r",
+                  "    for (let i = 1; i < prices.length; i++) {\r",
+                  "      pm.expect(prices[i]).to.be.at.least(prices[i - 1]);\r",
+                  "    }\r",
+                  "  });\r",
+                  "})();\r",
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products?limit={{limit}}&skip={{skip}}&sortBy=price&order=asc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "{{limit}}"
+                },
+                {
+                  "key": "skip",
+                  "value": "{{skip}}"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "price"
+                },
+                {
+                  "key": "order",
+                  "value": "asc"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET Product - not found (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Returns 404 for non-existing product\", () => {\r",
+                  "  pm.expect(pm.response.code).to.equal(404);\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Response is JSON (or at least parseable)\", () => {\r",
+                  "  // Some APIs return JSON error bodies; if not, this will fail and you'll know.\r",
+                  "  pm.response.to.be.json;\r",
+                  "});\r",
+                  "\r",
+                  "const err = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"Error payload has a message-like field\", () => {\r",
+                  "  // DummyJSON typically returns a message field for not found\r",
+                  "  pm.expect(err).to.satisfy(obj =>\r",
+                  "    obj.message !== undefined || obj.error !== undefined || obj.errors !== undefined\r",
+                  "  );\r",
+                  "});\r",
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products/999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products",
+                "999999"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Carts",
+      "item": [
+        {
+          "name": "GET Carts - list",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "(() => {\r",
+                  "  pm.test(\"Status 200\", () => pm.response.to.have.status(200));\r",
+                  "  pm.test(\"Response is JSON\", () => pm.response.to.be.json);\r",
+                  "\r",
+                  "  const data = pm.response.json();\r",
+                  "\r",
+                  "  function sum(nums) { return nums.reduce((a, b) => a + b, 0); }\r",
+                  "\r",
+                  "  pm.test(\"Has carts array + pagination\", () => {\r",
+                  "    pm.expect(data).to.have.property(\"carts\");\r",
+                  "    pm.expect(data.carts).to.be.an(\"array\");\r",
+                  "    pm.expect(data).to.have.property(\"total\");\r",
+                  "    pm.expect(data).to.have.property(\"skip\");\r",
+                  "    pm.expect(data).to.have.property(\"limit\");\r",
+                  "  });\r",
+                  "\r",
+                  "  pm.test(\"Each cart is internally consistent (totals & quantities)\", () => {\r",
+                  "    data.carts.forEach(cart => {\r",
+                  "      pm.expect(cart.products).to.be.an(\"array\");\r",
+                  "\r",
+                  "      // totalProducts == number of line items\r",
+                  "      pm.expect(cart.totalProducts).to.equal(cart.products.length);\r",
+                  "\r",
+                  "      // totalQuantity == sum of item quantities\r",
+                  "      pm.expect(cart.totalQuantity).to.equal(sum(cart.products.map(p => p.quantity)));\r",
+                  "\r",
+                  "      // cart totals match sums of items\r",
+                  "      const itemsTotal = sum(cart.products.map(p => p.total));\r",
+                  "      const itemsDiscounted = sum(cart.products.map(p => p.discountedTotal));\r",
+                  "\r",
+                  "      pm.expect(cart.total).to.be.closeTo(itemsTotal, 0.01);\r",
+                  "      pm.expect(cart.discountedTotal).to.be.closeTo(itemsDiscounted, 0.01);\r",
+                  "      pm.expect(cart.discountedTotal).to.be.at.most(cart.total);\r",
+                  "    });\r",
+                  "  });\r",
+                  "\r",
+                  "  // Set variables for next requests\r",
+                  "  if (data.carts?.length) {\r",
+                  "    const c = data.carts[0];\r",
+                  "    const firstItem = c.products?.[0];\r",
+                  "\r",
+                  "    try { pm.collectionVariables.set(\"cartId\", c.id); } catch (e) {}\r",
+                  "    try { pm.collectionVariables.set(\"userId\", c.userId); } catch (e) {}\r",
+                  "    if (firstItem) {\r",
+                  "      try { pm.collectionVariables.set(\"cartProductId\", firstItem.id); } catch (e) {}\r",
+                  "    }\r",
+                  "\r",
+                  "    try { pm.environment.set(\"cartId\", c.id); } catch (e) {}\r",
+                  "    try { pm.environment.set(\"userId\", c.userId); } catch (e) {}\r",
+                  "    if (firstItem) {\r",
+                  "      try { pm.environment.set(\"cartProductId\", firstItem.id); } catch (e) {}\r",
+                  "    }\r",
+                  "  }\r",
+                  "})();\r",
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/carts?limit={{limit}}&skip={{skip}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "carts"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "{{limit}}"
+                },
+                {
+                  "key": "skip",
+                  "value": "{{skip}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET Carts - by user",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "(() => {\r",
+                  "  pm.test(\"Status 200\", () => pm.response.to.have.status(200));\r",
+                  "  pm.test(\"Response is JSON\", () => pm.response.to.be.json);\r",
+                  "\r",
+                  "  const data = pm.response.json();\r",
+                  "  const expectedUserId = Number(pm.variables.get(\"userId\"));\r",
+                  "\r",
+                  "  pm.test(\"Has carts array\", () => {\r",
+                  "    pm.expect(data).to.have.property(\"carts\");\r",
+                  "    pm.expect(data.carts).to.be.an(\"array\");\r",
+                  "  });\r",
+                  "\r",
+                  "  pm.test(\"All returned carts belong to requested userId\", () => {\r",
+                  "    data.carts.forEach(c => {\r",
+                  "      pm.expect(Number(c.userId)).to.equal(expectedUserId);\r",
+                  "    });\r",
+                  "  });\r",
+                  "\r",
+                  "  function sum(nums) { return nums.reduce((a, b) => a + b, 0); }\r",
+                  "\r",
+                  "  pm.test(\"Each cart is internally consistent (totals & quantities)\", () => {\r",
+                  "    data.carts.forEach(cart => {\r",
+                  "      pm.expect(cart.products).to.be.an(\"array\");\r",
+                  "      pm.expect(cart.totalProducts).to.equal(cart.products.length);\r",
+                  "      pm.expect(cart.totalQuantity).to.equal(sum(cart.products.map(p => p.quantity)));\r",
+                  "\r",
+                  "      const itemsTotal = sum(cart.products.map(p => p.total));\r",
+                  "      const itemsDiscounted = sum(cart.products.map(p => p.discountedTotal));\r",
+                  "\r",
+                  "      pm.expect(cart.total).to.be.closeTo(itemsTotal, 0.01);\r",
+                  "      pm.expect(cart.discountedTotal).to.be.closeTo(itemsDiscounted, 0.01);\r",
+                  "      pm.expect(cart.discountedTotal).to.be.at.most(cart.total);\r",
+                  "    });\r",
+                  "  });\r",
+                  "\r",
+                  "  // Pick one cart/product for next requests (optional, but keeps flow consistent)\r",
+                  "  if (data.carts?.length) {\r",
+                  "    const c = data.carts[0];\r",
+                  "    const firstItem = c.products?.[0];\r",
+                  "\r",
+                  "    try { pm.collectionVariables.set(\"cartId\", c.id); } catch (e) {}\r",
+                  "    try { pm.environment.set(\"cartId\", c.id); } catch (e) {}\r",
+                  "\r",
+                  "    if (firstItem) {\r",
+                  "      try { pm.collectionVariables.set(\"cartProductId\", firstItem.id); } catch (e) {}\r",
+                  "      try { pm.environment.set(\"cartProductId\", firstItem.id); } catch (e) {}\r",
+                  "    }\r",
+                  "  }\r",
+                  "})();\r",
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "(() => {\r",
+                  "  const uid = pm.variables.get(\"userId\");\r",
+                  "  if (!uid) {\r",
+                  "    // fallback so the URL isn't empty\r",
+                  "    try { pm.collectionVariables.set(\"userId\", 1); } catch (e) {}\r",
+                  "    try { pm.environment.set(\"userId\", 1); } catch (e) {}\r",
+                  "  }\r",
+                  "})();\r",
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/carts/user/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "carts",
+                "user",
+                "{{userId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET Product - from cart (relation check)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "(() => {\r",
+                  "  const raw = pm.variables.get(\"cartProductId\");\r",
+                  "\r",
+                  "  pm.test(\"cartProductId variable is set\", () => {\r",
+                  "    pm.expect(raw, \"cartProductId\").to.be.ok;\r",
+                  "  });\r",
+                  "\r",
+                  "  // If missing, stop here to avoid misleading assertions\r",
+                  "  if (!raw) return;\r",
+                  "\r",
+                  "  pm.test(\"Status 200\", () => pm.response.to.have.status(200));\r",
+                  "  pm.test(\"Response is JSON\", () => pm.response.to.be.json);\r",
+                  "\r",
+                  "  const product = pm.response.json();\r",
+                  "  const cartPid = Number(raw);\r",
+                  "\r",
+                  "  pm.test(\"Product exists and id matches cartProductId\", () => {\r",
+                  "    pm.expect(product).to.have.property(\"id\");\r",
+                  "    pm.expect(Number(product.id)).to.equal(cartPid);\r",
+                  "  });\r",
+                  "\r",
+                  "  pm.test(\"Product core fields are valid\", () => {\r",
+                  "    pm.expect(product).to.have.property(\"title\");\r",
+                  "    pm.expect(product.title).to.be.a(\"string\");\r",
+                  "    pm.expect(product.title.trim().length).to.be.greaterThan(0);\r",
+                  "\r",
+                  "    pm.expect(product).to.have.property(\"price\");\r",
+                  "    pm.expect(product.price).to.be.a(\"number\");\r",
+                  "    pm.expect(product.price).to.be.greaterThan(0);\r",
+                  "  });\r",
+                  "})();\r",
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products/{{cartProductId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products",
+                "{{cartProductId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET Cart - not found (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Returns 404 for non-existing cart\", () => {\r",
+                  "  pm.expect(pm.response.code).to.equal(404);\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Response is JSON\", () => {\r",
+                  "  pm.response.to.be.json;\r",
+                  "});\r",
+                  "\r",
+                  "const err = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"Error payload has a message-like field\", () => {\r",
+                  "  pm.expect(err).to.satisfy(obj =>\r",
+                  "    obj.message !== undefined || obj.error !== undefined || obj.errors !== undefined\r",
+                  "  );\r",
+                  "});\r",
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/carts/999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "carts",
+                "999999"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://dummyjson.com"
+    },
+    {
+      "key": "productId",
+      "value": "1"
+    },
+    {
+      "key": "limit",
+      "value": "10"
+    },
+    {
+      "key": "skip",
+      "value": "0"
+    },
+    {
+      "key": "cartId",
+      "value": ""
+    },
+    {
+      "key": "userId",
+      "value": ""
+    },
+    {
+      "key": "cartProductId",
+      "value": ""
+    }
+  ]
+}
