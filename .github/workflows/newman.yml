@@ -17,8 +17,19 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Install Newman
-        run: npm install -g newman
+      - name: Install Newman + HTML reporter
+        run: |
+          npm install -g newman newman-reporter-htmlextra
 
-      - name: Run Postman collection
-        run: newman run postman/collection.json --reporters cli
+      - name: Run Postman collection (CLI + HTML report)
+        run: |
+          mkdir -p newman
+          newman run postman/collection.json \
+            --reporters cli,htmlextra \
+            --reporter-htmlextra-export newman/newman-report.html
+
+      - name: Upload HTML report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: newman-html-report
+          path: newman/newman-report.html
